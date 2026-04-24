@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { withRouter } from "react-router-dom";
+import { withRouter, Link } from "react-router-dom";
 import { connect } from "react-redux";
 import axios from "axios";
 import {
@@ -18,16 +18,23 @@ class ResendActivation extends Component {
     this.state = {
       email: "",
       emailError: "",
-      status: ""
+      status: "",
+      retryAfter: null,
+      rateLimited: false
     };
   }
+  
   onChange = e => {
     this.setState({ [e.target.name]: e.target.value });
   };
 
   onResendClick = () => {
-    this.setState({ emailError: "" });
-    this.setState({ status: "" });
+    this.setState({ 
+      emailError: "", 
+      status: "",
+      rateLimited: false,
+      retryAfter: null
+    });
 
     const userData = {
       email: this.state.email
@@ -39,30 +46,55 @@ class ResendActivation extends Component {
         this.setState({ status: "success" });
       })
       .catch(error => {
-        if (error.response && error.response.data.hasOwnProperty("email")) {
-          this.setState({ emailError: error.response.data["email"] });
+        if (error.response) {
+          if (error.response.status === 429) {
+            this.setState({ 
+              status: "rate_limited",
+              retryAfter: error.response.data.retry_after || 60
+            });
+          } else if (error.response.data.hasOwnProperty("email")) {
+            this.setState({ emailError: error.response.data["email"] });
+          } else {
+            this.setState({ status: "error" });
+          }
         } else {
           this.setState({ status: "error" });
         }
       });
   };
+  
   render() {
     let errorAlert = (
       <Alert variant="danger">
-        <Alert.Heading>Problem during activation email send </Alert.Heading>
+        <Alert.Heading>Problem during activation email send</Alert.Heading>
         Please try again or contact service support for further help.
+      </Alert>
+    );
+
+    let rateLimitedAlert = (
+      <Alert variant="warning">
+        <Alert.Heading>Too Many Requests</Alert.Heading>
+        <p>
+          Please wait {this.state.retryAfter} seconds before requesting another activation email.
+        </p>
+        <p className="mt-2">
+          This limit is in place to prevent abuse. If you don't receive the email, 
+          please check your spam folder before requesting another one.
+        </p>
       </Alert>
     );
 
     let successAlert = (
       <Alert variant="success">
-        <Alert.Heading>Email sent </Alert.Heading>
+        <Alert.Heading>Email Sent</Alert.Heading>
         <p>
-          We send you an email with activation link. Please check your email.
+          We've sent you an email with the activation link. Please check your email.
         </p>
         <p>
-          Please try again or contact us if you do not receive it within a few
-          minutes.
+          The link will expire in 24 hours for security reasons.
+        </p>
+        <p className="mt-3">
+          <Link to="/login/">Go to Login</Link>
         </p>
       </Alert>
     );
@@ -72,14 +104,13 @@ class ResendActivation extends Component {
         <Form>
           <Form.Group controlId="emailId">
             <Form.Label>
-              Your account is inactive. Please activate account by sending the
-              email with activation link.
+              Your account is inactive. Please enter your email to resend the activation link.
             </Form.Label>
             <Form.Control
               isInvalid={this.state.emailError}
               type="text"
               name="email"
-              placeholder="Enter email"
+              placeholder="Enter your email address"
               value={this.state.email}
               onChange={this.onChange}
             />
@@ -89,7 +120,7 @@ class ResendActivation extends Component {
           </Form.Group>
         </Form>
         <Button color="primary" onClick={this.onResendClick}>
-          Send activation email
+          Send Activation Email
         </Button>
       </div>
     );
@@ -97,6 +128,8 @@ class ResendActivation extends Component {
     let alert = "";
     if (this.state.status === "error") {
       alert = errorAlert;
+    } else if (this.state.status === "rate_limited") {
+      alert = rateLimitedAlert;
     } else if (this.state.status === "success") {
       alert = successAlert;
     }
@@ -107,7 +140,7 @@ class ResendActivation extends Component {
           <Col md="6">
             <h1>Resend Activation Email</h1>
             {alert}
-            {this.state.status !== "success" && form}
+            {this.state.status !== "success" && this.state.status !== "rate_limited" && form}
           </Col>
         </Row>
       </Container>

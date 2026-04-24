@@ -61,15 +61,18 @@ REST_FRAMEWORK = {
 DJOSER = {
     "USER_ID_FIELD": "username",
     "LOGIN_FIELD": "email",
-    "SEND_ACTIVATION_EMAIL": True,
+    "SEND_ACTIVATION_EMAIL": False,
     "ACTIVATION_URL": "activate/{uid}/{token}",
     "PASSWORD_RESET_CONFIRM_URL": "reset_password/{uid}/{token}",
     'SERIALIZERS': {
         'token_create': 'apps.accounts.serializers.CustomTokenCreateSerializer',
+        'current_user': 'apps.accounts.serializers.CustomUserSerializer',
+        'user': 'apps.accounts.serializers.CustomUserSerializer',
     },
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'no-reply@saasitive.com'
 SITE_NAME = "SaaSitive"
 
 PROTOCOL = "http"
